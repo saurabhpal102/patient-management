@@ -1,0 +1,33 @@
+#%RAML 1.0
+title: patient-management-api
+uses:
+  accountResource: /ResourceTypes/responseResourceType.raml
+traits:
+  client-id-required: !include /exchange_modules/96e08739-6250-4f79-aca5-0902331e7189/credentialstrait/1.0.0/credentialstrait.raml
+
+types:
+   Patient: !include /exchange_modules/96e08739-6250-4f79-aca5-0902331e7189/patient/1.0.0/patient.raml
+
+/login:
+  type:
+    accountResource.general:
+      successResponseMessage: "User Logged In"
+  post:
+    # is: [client-id-required]
+
+/home:
+  type:
+    accountResource.general:
+      successResponseMessage: ""
+  post:
+
+/registerUser:
+  type:
+    accountResource.general:
+      successResponseMessage: "User Registered"
+  post:
+/submitVitals:
+  type:
+    accountResource.general:
+      successResponseMessage: "Vitals Recieved"
+  post:

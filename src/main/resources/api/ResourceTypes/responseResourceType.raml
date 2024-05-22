@@ -1,0 +1,80 @@
+#%RAML 1.0 Library
+resourceTypes:
+  accountCollection:
+    post:
+      description: This is used to <<apiDescription>>
+      body:
+        application/json:
+          type: <<inputType>>
+          examples:
+            input: <<inputExample>>
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"200",
+                  "Message": <<successResponseMessage>>
+                }
+        400:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"400",
+                  "Message": "Bad Request"
+                }
+        404:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"404",
+                  "Message": "Resource Not Found"
+                }
+        500:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"500",
+                  "Message": "Internal Server Error"
+                }
+
+  general:
+    post:
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"200",
+                  "Message": <<successResponseMessage>>
+                }
+        400:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"400",
+                  "Message": "Bad Request"
+                }
+        404:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"404",
+                  "Message": "Resource Not Found"
+                }
+        500:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"500",
+                  "Message": "Internal Server Error"
+                }
+      #%RAML 1.0 ResourceType

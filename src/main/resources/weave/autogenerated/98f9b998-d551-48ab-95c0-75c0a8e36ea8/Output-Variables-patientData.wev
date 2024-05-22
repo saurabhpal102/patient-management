@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_98f9b998_d551_48ab_95c0_75c0a8e36ea8_Output_Variables_patientData = Any
+
