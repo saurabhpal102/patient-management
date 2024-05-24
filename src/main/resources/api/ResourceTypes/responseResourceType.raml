@@ -1,6 +1,6 @@
 #%RAML 1.0 Library
 resourceTypes:
-  accountCollection:
+  postCollection:
     post:
       description: This is used to <<apiDescription>>
       body:
@@ -17,6 +17,38 @@ resourceTypes:
                   "StatusCode":"200",
                   "Message": <<successResponseMessage>>
                 }
+        400:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"400",
+                  "Message": "Bad Request"
+                }
+        404:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"404",
+                  "Message": "Resource Not Found"
+                }
+        500:
+          body:
+            application/json:
+              example:
+                {
+                  "StatusCode":"500",
+                  "Message": "Internal Server Error"
+                }
+  patientCollection:
+    get:
+      description: This is used to <<apiDescription>>
+      responses:
+        200:
+          body:
+            application/json:
+              example: <<outputExample>>
         400:
           body:
             application/json:

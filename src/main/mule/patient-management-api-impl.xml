@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
-	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
-	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" xmlns:oauth2-provider="http://www.mulesoft.org/schema/mule/oauth2-provider"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
-	<sub-flow name="login:patient-management" doc:id="98f9b998-d551-48ab-95c0-75c0a8e36ea8" >
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/oauth2-provider http://www.mulesoft.org/schema/mule/oauth2-provider/current/mule-oauth2-provider.xsd
+http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="d0c224dc-6314-4c1f-8e15-ddd825bc25da" >
+		<db:my-sql-connection host="127.0.0.1" port="3306" user="root" password="admin" database="mulesoft" />
+	</db:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="0ab0a43b-d754-4b28-aea2-75e111fef301" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<sub-flow name="register:patient" doc:id="98f9b998-d551-48ab-95c0-75c0a8e36ea8" >
 		<ee:transform doc:name="Transform Message" doc:id="3be8e13c-fd33-4244-b58b-4ced8a777d06">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
@@ -16,20 +25,182 @@ output application/java
 import helper::Custom_Function
 ---
 {
-	id:payload.ID as Number,
-	name:payload.Name,
-	age: payload.Age as Number,
-	blood_group: payload.BloodGroup
+	name:payload.name,
+	age: payload.age as Number,
+	blood_group: payload.bloodGroup,
+	contact_number:payload.contactNumber,
+	email: payload.email,
+	password: payload.password
 }]]></ee:set-payload>
 			</ee:message>
 			<ee:variables>
-				<ee:set-variable variableName="patientData"><![CDATA[%dw 2.0
+				<ee:set-variable variableName="patientData" ><![CDATA[%dw 2.0
+output application/java
+import helper::Custom_Function
+---
+{
+	name:payload.name,
+	age: payload.age as Number,
+	blood_group: payload.bloodGroup,
+	contact_number:payload.contactNumber,
+	email: payload.email,
+	password: payload.password
+}]]></ee:set-variable>
+				<ee:set-variable variableName="clientIdAndSecret" ><![CDATA[%dw 2.0
 output application/json
 ---
-payload]]></ee:set-variable>
+{
+	client_id: attributes.headers.client_id,
+	client_secret: attributes.headers.client_secret
+}]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="0a01ed06-ab7e-4bde-838e-581342526b51" message="#[vars.patientData]" />
-		<!-- [STUDIO:"Insert"]<db:insert doc:name="Insert" doc:id="6b267619-8c7d-4941-a145-30c6d30825fc" /> [STUDIO] -->
+		<oauth2-provider:create-client doc:name="Create client" doc:id="eea6cb46-1b93-4069-af39-c3beff4094bb" clientId="#[attributes.headers.client_id]" type="CONFIDENTIAL" secret="#[attributes.headers.client_secret]" clientName="#[payload.name]" description='#[""]' principal='#[""]' authorizedGrantTypes='#[["CLIENT_CREDENTIALS"]]' config-ref="OAuth2_Provider_Config"/>
+		<try doc:name="Try" doc:id="0673ee2b-e8ac-4ff1-9333-10ce2f438078" >
+			<db:insert doc:name="Insert" doc:id="6b267619-8c7d-4941-a145-30c6d30825fc" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO patients (name, age, blood_group, contact_number, email, password) 
+VALUES (:name, :age, :blood_group, :contact_number, :email, :password);
+]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	name: vars.patientData.name, age: vars.patientData.age, blood_group: vars.patientData.blood_group, contact_number: vars.patientData.contact_number, email: vars.patientData.email, password:vars.patientData.password
+}]]]></db:input-parameters>
+		</db:insert>
+			<ee:transform doc:name="Transform Message" doc:id="e78e6d5a-bc16-425b-88e0-60b8e27cd764">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"data saved successfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ae77513b-657d-42fe-a7af-875deeccaeb4" >
+					<ee:transform doc:name="Transform Message" doc:id="de03911d-f54a-414e-909a-bd57aa5360b3" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" :error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+	<sub-flow name="validate:patient-login" doc:id="4167e782-2e7a-4c24-8e33-81d5be5ea887" >
+		<ee:transform doc:name="Transform Message" doc:id="b87d5486-37e7-46fe-8797-cad8303f222f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+import helper::Custom_Function
+---
+{
+	email: payload.email,
+	password: payload.password
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="userCredentials" ><![CDATA[%dw 2.0
+output application/java
+import helper::Custom_Function
+---
+{
+	email: payload.email,
+	password: payload.password
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="243199a2-60ec-4492-b5c2-2177e8a057c3" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM patients WHERE email = :email and password = :password
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	email: vars.userCredentials.email, password: vars.userCredentials.password
+}]]]></db:input-parameters>
+		</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="390cec7b-3143-420c-bd94-44ea295b46e9" message="#[payload.size]"/>
+		<choice doc:name="Choice" doc:id="2464f666-8b4b-4609-b0a6-58be57230d16" >
+			<when expression="#[sizeOf(payload) != 0]">
+				<flow-ref doc:name="request:access_token" doc:id="d575de0f-e155-4a8e-8242-50c51e44d0f6" name="request:access_token"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="4802c9d8-5b0b-4ec3-83bb-fbc6e5fecf45">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"email or password is wrong"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="request:access_token" doc:id="a72e648f-3e80-420b-a879-c8dcdc851125" >
+		<http:request method="POST" doc:name="Request for token" doc:id="901c43f3-c3d4-4f27-9204-613f011d8721" config-ref="HTTP_Request_configuration" path="/token">
+					<http:headers><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "aF455CFbA9b849e1895c380FDCf36598",
+	"grant_type" : "CLIENT_CREDENTIALS",
+	"client_id" : "7d44edc52df842989852bf156dec63d2"
+}]]]></http:headers>
+				</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="9a84c70a-d7f9-4198-89cb-9a4ea535be18" message="#[payload]" />
+		<set-variable value="#[payload.access_token]" doc:name="access_token" doc:id="fb426045-9944-4331-b35c-7c99ee6654e9" variableName="access_token" />
+		<oauth2-provider:validate-token doc:name="Validate token" doc:id="e63c9c6a-d78c-47a9-91de-b4c7e503a528" config-ref="OAuth2_Provider_Config" accessToken="#[vars.access_token]" />
+		<choice doc:name="Choice" doc:id="c201b801-d2dc-4df5-a007-b825e2477a6f" >
+			<when expression="sizeOf(payload) != 0">
+				<flow-ref doc:name="response:byId" doc:id="fee2ec03-bec9-4fd9-8842-4cbfc35a4a10" name="response:byId"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="8dc6f380-9ef3-4879-9aac-112382a80532" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"your token is not valid"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="response:byId" doc:id="46376afd-22ce-49e9-bbf7-1fdb4598cbc9" >
+		<db:select doc:name="Select" doc:id="d0b868b4-6e44-4d58-97b3-38d4fb509998" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * FROM patients WHERE email = :email]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	email: vars.userCredentials.email
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="e4e07666-f602-4b32-adce-de95e0d65677" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="getAllPatients" doc:id="1e94cfe1-9d22-4d1c-b8d0-f1250ef056c0" >
+		<db:select doc:name="Select" doc:id="adf088cc-b9db-4f7b-9708-7e29d3b72ffd" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM patients]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="637dfcc9-2a9c-425c-87b6-e0df04b80de6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (item, index) -> {   
+    id: item.id as Number,
+    name: item.name,
+    age: item.age as Number,
+    blood_group: item.bloodGroup,
+    contact_number: item.contactNumber,
+    email: item.email,
+    password: item.password
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="fa415650-b29f-4707-9424-b5d3420a6f38" message="#[payload]"/>
 	</sub-flow>
 </mule>
