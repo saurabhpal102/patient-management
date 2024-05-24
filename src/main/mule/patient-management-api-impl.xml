@@ -89,6 +89,19 @@ output application/json
 			</error-handler>
 		</try>
 	</sub-flow>
+	<sub-flow name="request:access_token" doc:id="a72e648f-3e80-420b-a879-c8dcdc851125">
+		<http:request method="POST" doc:name="Request for token" doc:id="901c43f3-c3d4-4f27-9204-613f011d8721" config-ref="HTTP_Request_configuration" path="/token">
+					<http:headers><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "aF455CFbA9b849e1895c380FDCf36598",
+	"grant_type" : "CLIENT_CREDENTIALS",
+	"client_id" : "7d44edc52df842989852bf156dec63d2"
+}]]]></http:headers>
+				</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="9a84c70a-d7f9-4198-89cb-9a4ea535be18" message="#[payload]" />
+		<set-variable value="#[payload.access_token]" doc:name="access_token" doc:id="fb426045-9944-4331-b35c-7c99ee6654e9" variableName="access_token" />
+	</sub-flow>
 	<sub-flow name="validate:patient-login" doc:id="4167e782-2e7a-4c24-8e33-81d5be5ea887" >
 		<ee:transform doc:name="Transform Message" doc:id="b87d5486-37e7-46fe-8797-cad8303f222f" >
 			<ee:message >
@@ -123,6 +136,40 @@ import helper::Custom_Function
 		<choice doc:name="Choice" doc:id="2464f666-8b4b-4609-b0a6-58be57230d16" >
 			<when expression="#[sizeOf(payload) != 0]">
 				<flow-ref doc:name="request:access_token" doc:id="d575de0f-e155-4a8e-8242-50c51e44d0f6" name="request:access_token"/>
+				<choice doc:name="Choice" doc:id="c201b801-d2dc-4df5-a007-b825e2477a6f">
+			<when expression="sizeOf(payload) != 0">
+						<set-variable value="#[payload.access_token]" doc:name="token" doc:id="aa775dee-4e19-47f8-ac51-e69e6cbcccb0" variableName="token" />
+						<db:select doc:name="Select" doc:id="d0b868b4-6e44-4d58-97b3-38d4fb509998" config-ref="Database_Config">
+			<db:sql><![CDATA[select * FROM patients WHERE email = :email]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	email: vars.userCredentials.email
+}]]]></db:input-parameters>
+		</db:select>
+						<ee:transform doc:name="Transform Message" doc:id="e4e07666-f602-4b32-adce-de95e0d65677">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	token: vars.access_token,
+    payload: payload
+    
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="8dc6f380-9ef3-4879-9aac-112382a80532">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"your token is not valid"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
 			</when>
 			<otherwise >
 				<ee:transform doc:name="Transform Message" doc:id="4802c9d8-5b0b-4ec3-83bb-fbc6e5fecf45">
@@ -136,52 +183,24 @@ output application/json
 			</otherwise>
 		</choice>
 	</sub-flow>
-	<sub-flow name="request:access_token" doc:id="a72e648f-3e80-420b-a879-c8dcdc851125" >
-		<http:request method="POST" doc:name="Request for token" doc:id="901c43f3-c3d4-4f27-9204-613f011d8721" config-ref="HTTP_Request_configuration" path="/token">
-					<http:headers><![CDATA[#[output application/java
+	<sub-flow name="getAllPatients" doc:id="1e94cfe1-9d22-4d1c-b8d0-f1250ef056c0" >
+		<try doc:name="Try" doc:id="99a34492-ad25-42ad-947f-14f9d635b419" >
+			<oauth2-provider:validate-token doc:name="Validate token" doc:id="5a46e0d6-9423-4a4f-a57b-e8de85ce168c" config-ref="OAuth2_Provider_Config" />
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="3a619c9e-7bf1-40a6-ae75-6c2fe3d8a632" >
+					<ee:transform doc:name="Transform Message" doc:id="7a09923c-b2c7-4254-b2dd-e231d15cd8e6">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
 ---
 {
-	"client_secret" : "aF455CFbA9b849e1895c380FDCf36598",
-	"grant_type" : "CLIENT_CREDENTIALS",
-	"client_id" : "7d44edc52df842989852bf156dec63d2"
-}]]]></http:headers>
-				</http:request>
-		<logger level="INFO" doc:name="Logger" doc:id="9a84c70a-d7f9-4198-89cb-9a4ea535be18" message="#[payload]" />
-		<set-variable value="#[payload.access_token]" doc:name="access_token" doc:id="fb426045-9944-4331-b35c-7c99ee6654e9" variableName="access_token" />
-		<oauth2-provider:validate-token doc:name="Validate token" doc:id="e63c9c6a-d78c-47a9-91de-b4c7e503a528" config-ref="OAuth2_Provider_Config" accessToken="#[vars.access_token]" />
-		<choice doc:name="Choice" doc:id="c201b801-d2dc-4df5-a007-b825e2477a6f" >
-			<when expression="sizeOf(payload) != 0">
-				<flow-ref doc:name="response:byId" doc:id="fee2ec03-bec9-4fd9-8842-4cbfc35a4a10" name="response:byId"/>
-			</when>
-			<otherwise >
-				<ee:transform doc:name="Transform Message" doc:id="8dc6f380-9ef3-4879-9aac-112382a80532" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-"your token is not valid"]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-			</otherwise>
-		</choice>
-	</sub-flow>
-	<sub-flow name="response:byId" doc:id="46376afd-22ce-49e9-bbf7-1fdb4598cbc9" >
-		<db:select doc:name="Select" doc:id="d0b868b4-6e44-4d58-97b3-38d4fb509998" config-ref="Database_Config">
-			<db:sql ><![CDATA[select * FROM patients WHERE email = :email]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{
-	email: vars.userCredentials.email
-}]]]></db:input-parameters>
-		</db:select>
-		<ee:transform doc:name="Transform Message" doc:id="e4e07666-f602-4b32-adce-de95e0d65677" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-	</sub-flow>
-	<sub-flow name="getAllPatients" doc:id="1e94cfe1-9d22-4d1c-b8d0-f1250ef056c0" >
+	"message": error.description 
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
 		<db:select doc:name="Select" doc:id="adf088cc-b9db-4f7b-9708-7e29d3b72ffd" config-ref="Database_Config">
 			<db:sql ><![CDATA[SELECT * FROM patients]]></db:sql>
 		</db:select>
@@ -201,6 +220,5 @@ payload map (item, index) -> {
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="fa415650-b29f-4707-9424-b5d3420a6f38" message="#[payload]"/>
 	</sub-flow>
 </mule>
