@@ -65,19 +65,11 @@ VALUES (:name, :age, :blood_group, :contact_number, :email, :password);
 	name: vars.patientData.name, age: vars.patientData.age, blood_group: vars.patientData.blood_group, contact_number: vars.patientData.contact_number, email: vars.patientData.email, password:vars.patientData.password
 }]]]></db:input-parameters>
 		</db:insert>
-			<ee:transform doc:name="Transform Message" doc:id="e78e6d5a-bc16-425b-88e0-60b8e27cd764">
-			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-"data saved successfully"]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
 			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ae77513b-657d-42fe-a7af-875deeccaeb4" >
-					<ee:transform doc:name="Transform Message" doc:id="de03911d-f54a-414e-909a-bd57aa5360b3" >
-						<ee:message >
-							<ee:set-payload ><![CDATA[%dw 2.0
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="81d8bdbd-f3fb-4d82-a296-bac78df82dcc" >
+					<ee:transform doc:name="Transform Message" doc:id="de03911d-f54a-414e-909a-bd57aa5360b3">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
@@ -85,9 +77,17 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
-				</on-error-continue>
+				</on-error-propagate>
 			</error-handler>
 		</try>
+		<ee:transform doc:name="Transform Message" doc:id="e78e6d5a-bc16-425b-88e0-60b8e27cd764">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"successful"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
 	</sub-flow>
 	<sub-flow name="request:access_token" doc:id="a72e648f-3e80-420b-a879-c8dcdc851125">
 		<http:request method="POST" doc:name="Request for token" doc:id="901c43f3-c3d4-4f27-9204-613f011d8721" config-ref="HTTP_Request_configuration" path="/token">
@@ -103,6 +103,30 @@ output application/json
 		<set-variable value="#[payload.access_token]" doc:name="access_token" doc:id="fb426045-9944-4331-b35c-7c99ee6654e9" variableName="access_token" />
 	</sub-flow>
 	<sub-flow name="submit:vitals" doc:id="fd2066df-c8ef-4327-bb8a-5c4b364345c1" >
+		<ee:transform doc:name="Transform Message" doc:id="9d13898a-914a-45d5-9c12-39fead8a9873">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  user_id: payload.userId as Number,
+  temperature: payload.temperature as Number,
+  weight: payload.weight as Number,
+  oxygen_level: payload.oxygenLevel as Number,	
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="inputVitals" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  user_id: payload.userId as Number,
+  temperature: payload.temperature as Number,
+  weight: payload.weight as Number,
+  oxygen_level: payload.oxygenLevel as Number,	
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
 		<try doc:name="Try" doc:id="dfda712d-19a3-4e0d-94a4-0696ec74ffde" >
 			<oauth2-provider:validate-token doc:name="Validate token" doc:id="9ebc5e39-59b6-465c-8007-adf198d497dc" config-ref="OAuth2_Provider_Config"/>
 			<error-handler >
@@ -120,17 +144,22 @@ output application/json
 				</on-error-propagate>
 			</error-handler>
 		</try>
-		<ee:transform doc:name="Transform Message" doc:id="9d13898a-914a-45d5-9c12-39fead8a9873" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<db:insert doc:name="Insert" doc:id="1d47f809-4ab8-4035-a6c3-9250384c3177" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO user_vitals (user_id, temperature, weight, oxygen_level) 
+VALUES (:user_id, :temperature, :weight, :oxygen_level)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	user_id: vars.inputVitals.user_id, 
+	temperature: vars.inputVitals.temperature, 
+	weight: vars.inputVitals.weight, 
+	oxygen_level: vars.inputVitals.oxygen_level
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="e6aacec6-9034-485f-bdd9-fa85798a51fa">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-  user_id: payload.userId,
-  temperature: payload.temperature,
-  weight: payload.weight,
-  oxygen_level: payload.oxygenLevel,	
-}]]></ee:set-payload>
+"successful"]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 	</sub-flow>
