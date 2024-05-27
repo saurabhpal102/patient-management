@@ -25,28 +25,28 @@ output application/java
 import helper::Custom_Function
 ---
 {
-	name:payload.name,
-	age: payload.age as Number,
-	blood_group: payload.bloodGroup,
-	contact_number:payload.contactNumber,
-	email: payload.email,
-	password: payload.password
+	name:payload.Name,
+	age: payload.Age as Number,
+	blood_group: payload.BloodGroup,
+	contact_number:payload.ContactNumber,
+	email: payload.Email,
+	password: payload.Password
 }]]></ee:set-payload>
 			</ee:message>
 			<ee:variables>
-				<ee:set-variable variableName="patientData" ><![CDATA[%dw 2.0
+				<ee:set-variable variableName="patientData"><![CDATA[%dw 2.0
 output application/java
 import helper::Custom_Function
 ---
 {
-	name:payload.name,
-	age: payload.age as Number,
-	blood_group: payload.bloodGroup,
-	contact_number:payload.contactNumber,
-	email: payload.email,
-	password: payload.password
+	name:payload.Name,
+	age: payload.Age as Number,
+	blood_group: payload.BloodGroup,
+	contact_number:payload.ContactNumber,
+	email: payload.Email,
+	password: payload.Password
 }]]></ee:set-variable>
-				<ee:set-variable variableName="clientIdAndSecret" ><![CDATA[%dw 2.0
+				<ee:set-variable variableName="clientIdAndSecret"><![CDATA[%dw 2.0
 output application/json
 ---
 {
@@ -101,6 +101,38 @@ output application/json
 				</http:request>
 		<logger level="INFO" doc:name="Logger" doc:id="9a84c70a-d7f9-4198-89cb-9a4ea535be18" message="#[payload]" />
 		<set-variable value="#[payload.access_token]" doc:name="access_token" doc:id="fb426045-9944-4331-b35c-7c99ee6654e9" variableName="access_token" />
+	</sub-flow>
+	<sub-flow name="submit:vitals" doc:id="fd2066df-c8ef-4327-bb8a-5c4b364345c1" >
+		<try doc:name="Try" doc:id="dfda712d-19a3-4e0d-94a4-0696ec74ffde" >
+			<oauth2-provider:validate-token doc:name="Validate token" doc:id="9ebc5e39-59b6-465c-8007-adf198d497dc" config-ref="OAuth2_Provider_Config"/>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="d053a800-7d23-4f1f-a9ae-59b9e71c8415" >
+					<ee:transform doc:name="Transform Message" doc:id="47a0b481-7ebe-478c-ab1e-1881271ed8c0" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.detailedDescription
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="9d13898a-914a-45d5-9c12-39fead8a9873" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  user_id: payload.userId,
+  temperature: payload.temperature,
+  weight: payload.weight,
+  oxygen_level: payload.oxygenLevel,	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
 	</sub-flow>
 	<sub-flow name="validate:patient-login" doc:id="4167e782-2e7a-4c24-8e33-81d5be5ea887" >
 		<ee:transform doc:name="Transform Message" doc:id="b87d5486-37e7-46fe-8797-cad8303f222f" >

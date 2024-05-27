@@ -2,6 +2,13 @@
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:oauth2-provider="http://www.mulesoft.org/schema/mule/oauth2-provider" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd http://www.mulesoft.org/schema/mule/oauth2-provider http://www.mulesoft.org/schema/mule/oauth2-provider/current/mule-oauth2-provider.xsd">
     <http:listener-config name="patient-management-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
+		<http:listener-interceptors >
+			<http:cors-interceptor >
+				<http:origins >
+					<http:public-resource />
+				</http:origins>
+			</http:cors-interceptor>
+		</http:listener-interceptors>
     </http:listener-config>
     <apikit:config name="patient-management-api-config" api="patient-management-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <os:object-store name="client_os" doc:name="Object store" doc:id="8c57c1f8-ed17-4d54-99a0-4d717cba41a0" />
@@ -142,38 +149,15 @@ output application/json
         </ee:transform>
     </flow>
     <flow name="post:\login:patient-management-api-config">
-        <flow-ref doc:name="Flow Reference" doc:id="b6b6a522-1475-4e0e-8085-ec232b394992" name="validate:patient-login" />
+        <flow-ref doc:name="validate:patient-login" doc:id="b6b6a522-1475-4e0e-8085-ec232b394992" name="validate:patient-login" />
     </flow>
     <flow name="post:\registerUser:patient-management-api-config">
-        <flow-ref doc:name="Flow Reference" doc:id="6f381065-f963-426d-b317-7621f519d2b1" name="register:patient" />
+        <flow-ref doc:name="register:patient" doc:id="6f381065-f963-426d-b317-7621f519d2b1" name="register:patient" />
     </flow>
     <flow name="post:\submitVitals:patient-management-api-config">
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  StatusCode: "200",
-  Message: "Vitals Recieved"
-} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+		<flow-ref doc:name="submit:vitals" doc:id="eaf53d18-28c6-4509-bbb4-41bbd71171d9" name="submit:vitals"/>
     </flow>
     <flow name="get:\listUsers:patient-management-api-config">
-        <flow-ref doc:name="Flow Reference" doc:id="744e6882-e0bb-4241-a5c7-8db0cbb47edc" name="getAllPatients"/>
-    </flow>
-    <flow name="post:\registerUser:application\json:patient-management-api-config">
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  StatusCode: "200",
-  Message: "User Registered"
-} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+        <flow-ref doc:name="getAllPatients" doc:id="744e6882-e0bb-4241-a5c7-8db0cbb47edc" name="getAllPatients"/>
     </flow>
 </mule>
